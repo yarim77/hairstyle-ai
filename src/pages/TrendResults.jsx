@@ -36,31 +36,42 @@ export default function TrendResults() {
     const handleShare = async () => {
         try {
             if (navigator.share) {
-                // Fetch the image as blob to share the file directly if possible
-                const response = await fetch(generatedImageUrl);
-                const blob = await response.blob();
-                const file = new File([blob], 'hairstyle_ai_result.png', { type: blob.type });
+                let shareData = {
+                    title: 'HAIRSTYLE AI - 2026 트렌드 헤어',
+                    text: '나에게 어울리는 20가지 헤어스타일을 생성해봤어요! 지금 바로 확인해보세요.',
+                    url: window.location.origin
+                };
 
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: 'HAIRSTYLE AI - 2026 트렌드 헤어',
-                        text: '나에게 어울리는 20가지 헤어스타일을 확인해보세요!',
-                        files: [file]
-                    });
-                } else {
-                    // Fallback to sharing current URL or message without file
-                    await navigator.share({
-                        title: 'HAIRSTYLE AI - 2026 트렌드 헤어',
-                        text: '나에게 어울리는 20가지 헤어스타일을 확인해보세요!',
-                        url: window.location.origin
-                    });
+                try {
+                    // 이미지 파일을 공유용으로 변환 시도 (Web Share API Level 2)
+                    const response = await fetch(generatedImageUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'hairstyle_ai_result.png', { type: blob.type || 'image/png' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        shareData.files = [file];
+                    }
+                } catch (e) {
+                    console.warn("파일 변환 실패 (URL 공유로 대체):", e);
                 }
+
+                await navigator.share(shareData);
             } else {
-                alert("현재 사용 중인 브라우저에서는 공유하기 기능을 지원하지 않습니다.");
+                // 지원하지 않는 브라우저(데스크탑 등)의 경우 클립보드 복사로 대체
+                await navigator.clipboard.writeText(window.location.origin);
+                alert("링크가 클립보드에 복사되었습니다! 원하는 곳에 붙여넣어 공유해주세요.");
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
-                console.error("공유하기 오류:", error);
+                console.error("공유하기 실패:", error);
+
+                // 공유 모듈이 강제 취소/에러 난 경우 클립보드 복사 백업 시도
+                try {
+                    await navigator.clipboard.writeText(window.location.origin);
+                    alert("링크가 클립보드에 복사되었습니다! (공유 기능을 일시적으로 사용할 수 없는 환경입니다)");
+                } catch (clipboardErr) {
+                    alert("공유하기 기능을 실행할 수 없습니다. 브라우저 설정을 확인해주세요.");
+                }
             }
         }
     };
