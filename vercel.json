@@ -7,10 +7,6 @@
         {
             "source": "/api/generate-nano",
             "destination": "https://api.nanobananaapi.ai/api/v1/nanobanana/generate"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
         }
     ]
 }
