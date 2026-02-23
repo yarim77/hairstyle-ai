@@ -1,0 +1,16 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/generate-google",
+            "destination": "https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent"
+        },
+        {
+            "source": "/api/generate-nano",
+            "destination": "https://api.nanobananaapi.ai/api/v1/nanobanana/generate"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

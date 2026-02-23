@@ -163,7 +163,7 @@ export default function Home() {
             const promptToUse = gender === 'female' ? FEMALE_PROMPT : MALE_PROMPT;
 
             // API 키가 'AIzaSy'로 시작한다면 Google AI Studio (Gemini) 키입니다.
-            let API_ENDPOINT = "https://api.nanobananaapi.ai/api/v1/nanobanana/generate";
+            let API_ENDPOINT = "/api/generate-nano";
             let requestBody = {
                 prompt: promptToUse,
                 images: [base64Image],
@@ -173,8 +173,8 @@ export default function Home() {
 
             // 구글 자체 엔드포인트 세팅 (Google AI Studio Key일 경우)
             if (apiKey.startsWith("AIzaSy")) {
-                // 구글 자체의 최근 프리뷰 모델인 nano-banana-pro-preview (gemini-3-pro-image-preview)로 파라미터를 변경합니다.
-                API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key=${apiKey}`;
+                // Vercel proxy rewrite를 활용하여 CORS 회피
+                API_ENDPOINT = `/api/generate-google?key=${apiKey}`;
 
                 // base64 문자열에서 헤더(data:image/jpeg;base64,)를 제거하여 순수 데이터 부분 추출
                 const base64Data = base64Image.split(',')[1];
