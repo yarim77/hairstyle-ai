@@ -261,17 +261,35 @@ export default function Home() {
 
             if (apiKey.startsWith("AIzaSy")) {
                 // Google AI Studio (gemini-3-pro-image-preview) 응답 포맷 추출 
-                const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                try {
-                    const parsedResult = JSON.parse(responseText);
+                let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                let parsedResult = null;
+
+                if (responseText) {
+                    // 마크다운 JSON 형식이 씌워져 돌아올 수 있으므로 완전 제거
+                    const cleanJsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    try {
+                        parsedResult = JSON.parse(cleanJsonStr);
+                    } catch (e) {
+                        // ignore parse error and fallback
+                    }
+                }
+
+                if (parsedResult && (parsedResult.image_url || parsedResult.url)) {
                     generatedImageUrl = parsedResult.image_url || parsedResult.url;
-                } catch (e) {
+                } else {
                     const base64Output = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
                     if (base64Output) {
                         const outMime = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/png';
                         generatedImageUrl = `data:${outMime};base64,${base64Output}`;
                     } else if (responseText && responseText.includes("http")) {
-                        generatedImageUrl = responseText;
+                        // URL이 텍스트에 덩그러니 있을 때 추출
+                        const urlMatch = responseText.match(/https?:\/\/[^\s"']+/);
+                        if (urlMatch) {
+                            generatedImageUrl = urlMatch[0];
+                        }
+                    } else if (responseText) {
+                        // 구글이 이미지 반환을 거부하고 경고 문구를 보냈을 때
+                        throw new Error(`AI의 거절 메시지: ${responseText}`);
                     }
                 }
             } else {
