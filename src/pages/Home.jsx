@@ -227,10 +227,7 @@ export default function Home() {
                                 }
                             ]
                         }
-                    ],
-                    generationConfig: {
-                        responseMimeType: "application/json"
-                    }
+                    ]
                 };
             }
 
