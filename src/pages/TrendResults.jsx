@@ -9,27 +9,50 @@ export default function TrendResults() {
     const originalImage = location.state?.originalImage || "/sample-before-kr.png";
 
     const handleDownload = async () => {
+        const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
         try {
-            // Fetch the image as a blob
+            // 1. 이미지를 데이터(Blob)로 가져옵니다.
             const response = await fetch(generatedImageUrl);
             const blob = await response.blob();
 
-            // Create a blob URL
-            const url = window.URL.createObjectURL(blob);
+            // 2. 스마트폰 네이티브 공유 및 저장 API 우선 시도 (iOS Safari, Android Chrome 등)
+            if (isMobile && navigator.canShare) {
+                const file = new File([blob], 'hairstyle_ai_result.png', { type: blob.type || 'image/png' });
+                if (navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'HAIRSTYLE AI - 나만의 결과 저장하기'
+                        });
+                        // 공유/저장 메뉴가 떴다면 여기서 처리가 끝납니다. (사용자가 '이미지 저장'을 누를 수 있음)
+                        return;
+                    } catch (shareErr) {
+                        // 사용자가 취소(AbortError)했거나 권한 문제라면 아래의 PC형 다운로드 방식으로 마저 시도합니다.
+                    }
+                }
+            }
 
-            // Create a temporary link element and trigger download
+            // 3. 데스크탑(PC) 또는 네이티브 공유가 취소/실패한 경우, 강제 HTML5 다운로드 트리거
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = `hairstyle_ai_2026_trend_${Date.now()}.png`;
             document.body.appendChild(link);
             link.click();
-
-            // Clean up
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
+
+            // 추가 설명: 카카오톡/네이버 인앱 브라우저나 일부 아이폰 환경에서는 위 link.click() 다운로드를 아예 막아버립니다. 
+            // 이를 대비해 사용자에게 확실하게 수동 저장법을 안내해줍니다.
+            if (isMobile) {
+                setTimeout(() => {
+                    alert("혹시 자동 다운로드가 안 되셨나요?\n\n모바일 인앱 브라우저(카카오톡, 네이버, 인스타그램 등)나 특정 환경에서는 보안 상 파일 자동 저장이 차단되어 있을 수 있습니다.\n\n해결법: 지금 화면에 보이는 사진을 손가락으로 '길게 꾹' 누르시면 나타나는 메뉴에서 [내 사진첩에 저장]을 직접 선택하실 수 있습니다! 📸");
+                }, 500);
+            }
         } catch (error) {
             console.error("다운로드 오류:", error);
-            alert("이미지 다운로드에 실패했습니다. 다시 시도해 주세요.");
+            alert("이미지 처리 중 예상치 못한 오류가 발생했습니다. 이미지 파일의 크기가 문제일 수 있습니다.\n대신 화면의 이미지를 '길게 꾹' 눌러 직접 저장해주세요!");
         }
     };
 
