@@ -258,36 +258,44 @@ export default function Home() {
 
             if (apiKey.startsWith("AIzaSy")) {
                 // Google AI Studio (gemini-3-pro-image-preview) 응답 포맷 추출 
-                let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                let parsedResult = null;
+                if (data.candidates && data.candidates.length > 0) {
+                    const candidate = data.candidates[0];
 
-                if (responseText) {
-                    // 마크다운 JSON 형식이 씌워져 돌아올 수 있으므로 완전 제거
-                    const cleanJsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-                    try {
-                        parsedResult = JSON.parse(cleanJsonStr);
-                    } catch (e) {
-                        // ignore parse error and fallback
+                    if (candidate.finishReason === "SAFETY" || candidate.finishReason === "RECITATION") {
+                        throw new Error(`AI가 보안 정책(${candidate.finishReason})에 의해 사진 분석을 거부했습니다. 너무 노출이 있거나 규정에 어긋나는 사진일 수 있습니다.`);
                     }
-                }
 
-                if (parsedResult && (parsedResult.image_url || parsedResult.url)) {
-                    generatedImageUrl = parsedResult.image_url || parsedResult.url;
-                } else {
-                    const base64Output = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-                    if (base64Output) {
-                        const outMime = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/png';
-                        generatedImageUrl = `data:${outMime};base64,${base64Output}`;
-                    } else if (responseText && responseText.includes("http")) {
-                        // URL이 텍스트에 덩그러니 있을 때 추출
-                        const urlMatch = responseText.match(/https?:\/\/[^\s"']+/);
-                        if (urlMatch) {
-                            generatedImageUrl = urlMatch[0];
+                    const parts = candidate?.content?.parts;
+                    if (parts && parts.length > 0) {
+                        for (let p of parts) {
+                            if (p.inlineData && p.inlineData.data) {
+                                const outMime = p.inlineData.mimeType || 'image/png';
+                                generatedImageUrl = `data:${outMime};base64,${p.inlineData.data}`;
+                                break;
+                            } else if (p.text) {
+                                // 마크다운 JSON 형식이 씌워져 돌아올 수 있으므로 제거
+                                const cleanJsonStr = p.text.replace(/```json/g, '').replace(/```/g, '').trim();
+                                try {
+                                    const parsedResult = JSON.parse(cleanJsonStr);
+                                    if (parsedResult.image_url || parsedResult.url) {
+                                        generatedImageUrl = parsedResult.image_url || parsedResult.url;
+                                        break;
+                                    }
+                                } catch (e) {
+                                    // URL이 텍스트에 덩그러니 있을 때 추출
+                                    const urlMatch = p.text.match(/https?:\/\/[^\s"']+/);
+                                    if (urlMatch) {
+                                        generatedImageUrl = urlMatch[0];
+                                        break;
+                                    }
+                                }
+                                // 만약 여기까지 왔는데도 못 찾았다면, 구글이 그냥 텍스트 말대꾸를 한 것입니다
+                                throw new Error(`AI의 텍스트 거절 메시지: ${p.text}`);
+                            }
                         }
-                    } else if (responseText) {
-                        // 구글이 이미지 반환을 거부하고 경고 문구를 보냈을 때
-                        throw new Error(`AI의 거절 메시지: ${responseText}`);
                     }
+                } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                    throw new Error(`AI가 보안 정책에 의해 사진을 거절했습니다: ${data.promptFeedback.blockReason}`);
                 }
             } else {
                 // 서드파티 Nano Banana 응답 포맷 추출
@@ -297,7 +305,12 @@ export default function Home() {
             if (generatedImageUrl) {
                 navigate('/trend-results', { state: { generatedImageUrl, originalImage: base64Image } });
             } else {
-                throw new Error("API 응답에서 이미지 URL을 찾을 수 없습니다.");
+                let debugInfo = "";
+                try {
+                    debugInfo = JSON.stringify(data, null, 2);
+                    if (debugInfo.length > 500) debugInfo = debugInfo.substring(0, 500) + "...";
+                } catch (e) { }
+                throw new Error(`API 응답에서 이미지 URL을 찾을 수 없습니다.\n\n[서버 응답 원본 확인용 디버그 로그]\n${debugInfo}`);
             }
 
         } catch (error) {
