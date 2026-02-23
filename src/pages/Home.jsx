@@ -299,6 +299,9 @@ export default function Home() {
                 }
             } else {
                 // 서드파티 Nano Banana 응답 포맷 추출
+                if (data.code === 401 || (data.msg && data.msg.includes("permission"))) {
+                    throw new Error(`[API 키 인증 실패]\n\n입력하신 API 키(Vercel 환경변수)가 유효하지 않습니다.\n구글 API 키를 새로 발급받으셨다면, 키 값이 무조건 'AIzaSy'로 시작해야 합니다.\n\nVercel 설정에서 환경 변수에 빈칸이나 따옴표가 섞여 들어갔는지 다시 한번 확인해 주시고, 기존 키를 지우고 처음부터 'AIzaSy'로 시작하는 키값만 다시 저장(Save)해주세요.`);
+                }
                 generatedImageUrl = data.image_url || data.images?.[0] || data.output?.[0] || data.url;
             }
 
