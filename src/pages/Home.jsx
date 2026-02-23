@@ -163,7 +163,7 @@ export default function Home() {
             const promptToUse = gender === 'female' ? FEMALE_PROMPT : MALE_PROMPT;
 
             // API 키가 'AIzaSy'로 시작한다면 Google AI Studio (Gemini) 키입니다.
-            let API_ENDPOINT = "/api/generate-nano";
+            let API_ENDPOINT = "https://api.nanobananaapi.ai/api/v1/nanobanana/generate";
             let requestBody = {
                 prompt: promptToUse,
                 images: [base64Image],
@@ -173,13 +173,14 @@ export default function Home() {
 
             // 구글 자체 엔드포인트 세팅 (Google AI Studio Key일 경우)
             if (apiKey.startsWith("AIzaSy")) {
-                // Vercel proxy rewrite를 활용하여 CORS 회피
-                API_ENDPOINT = `/api/generate-google?key=${apiKey}`;
+                // Gemini API 엔드포인트 (기본 모델으로 폴백)
+                API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
 
                 // base64 문자열에서 헤더(data:image/jpeg;base64,)를 제거하여 순수 데이터 부분 추출
                 const base64Data = base64Image.split(',')[1];
-                const mimeType = base64Image.split(';')[0].split(':')[1];
+                const mimeType = base64Image.split(';')[0].split(':')[1] || "image/jpeg";
 
+                // Gemini API 스펙에 맞는 request body 구성
                 requestBody = {
                     contents: [
                         {
@@ -257,7 +258,7 @@ export default function Home() {
             const isCorsOrNetworkError = error.message.includes("Failed to fetch") || error.message.includes("NetworkError");
 
             if (isCorsOrNetworkError) {
-                alert("브라우저 CORS(보안) 차단 혹은 잘못된 API 주소로 인해 서버와 연결할 수 없습니다.\n\n(오류로 인해 테스트 시뮬레이션 모드로 넘어갑니다.)");
+                alert(`API 통신 실패 (사진 용량이 너무 커서 차단되었거나 인터넷 연결 문제가 있을 수 있습니다.)\n\n오류: ${error.message}\n\n(오류로 인해 테스트 시뮬레이션 모드로 넘어갑니다.)`);
             } else {
                 alert(`이미지 생성 중 오류가 발생했습니다.\n${error.message}\n\n(시뮬레이션 모드로 테스트 화면으로 이동합니다.)`);
             }
